@@ -1,0 +1,67 @@
+---
+- name: Install Nginx on target machines
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Update the package repository
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Ensure Nginx is started and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Configure Nginx site
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+        server {
+            listen 443 ssl;
+            server_name pasarmalangan.cyou;
+
+            ssl_certificate /etc/letsencrypt/live/pasarmalangan.cyou/fullchain.pem;
+            ssl_certificate_key /etc/letsencrypt/live/pasarmalangan.cyou/privkey.pem;
+
+            location / {
+            proxy_pass http://localhost:8080;  # Sesuaikan dengan aplikasi Anda
+          }
+        }
+
+        server {
+            listen 80;
+            server_name pasarmalangan.cyou;
+            return 301 https://$server_name$request_uri;
+          }
+
+
+    - name: Reload Nginx to apply configuration
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Install Certbot
+      apt:
+        name: certbot
+        state: present
+
+    - name: Install python3-certbot-nginx for Nginx integration
+      apt:
+        name: python3-certbot-nginx
+        state: present
+
+    - name: Obtain SSL certificate for pasarmalangan.cyou
+      command: >
+        sudo certbot certonly --nginx -d pasarmalangan.cyou
+
+    - name: Reload Nginx to apply SSL configuration
+      service:
+        name: nginx
+        state: reloaded

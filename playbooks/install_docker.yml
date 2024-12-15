@@ -1,0 +1,83 @@
+---
+- name: Install Docker and Docker Compose, and configure frontend
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Update the package repository
+      apt:
+        update_cache: yes
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce and docker-compose
+      apt:
+        pkg:
+          - docker-ce
+          - docker-compose
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+    - name: Create frontend directory
+      file:
+        path: /home/ubuntu/pasarmalanganFE
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Create Docker Compose file for frontend
+      copy:
+        dest: /home/ubuntu/pasarmalanganFE/docker-compose.yml
+        content: |
+          services:
+            frontend:
+              image: koozee/pasarmalangan:latest  # Gantilah dengan nama image yang sesuai
+              container_name: pasarmalangan_frontend
+              ports:
+                - "8080:8080"
+              networks:
+                - app-network
+
+          networks:
+            app-network:
+              driver: bridge
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Ensure Docker service is started
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Run Docker Compose up to start the frontend
+      command:
+        cmd: "docker-compose up -d"
+        chdir: /home/ubuntu/pasarmalanganFE
+        creates: /home/ubuntu/pasarmalanganFE/docker-compose.yml
